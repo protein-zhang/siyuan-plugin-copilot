@@ -139,12 +139,12 @@
                 return;
             }
             const guide = [
-                'Connect to my SiYuan Copilot MCP server using the configuration below.',
-                `MCP URL: ${info.endpoint}`,
+                '请使用以下配置连接我的 SiYuan Copilot MCP 服务：',
+                `MCP 地址：${info.endpoint}`,
                 `Authorization: Bearer ${info.token}`,
                 '',
-                'First read the resource mcp-gateway://about, then call tools/list. The tools returned by tools/list are the complete allow-list; do not call or assume any other tools.',
-                'Use each tool schema exactly as advertised. Ask me in your agent interface before any destructive or consequential action, including editing/deleting/moving notes, running code, or executing commands. Never expose or repeat the bearer token.',
+                '请先读取资源 mcp-gateway://about，然后调用 tools/list。tools/list 返回的工具即为完整允许列表，不要调用或假设其他工具。',
+                '请严格按照每个工具公布的 schema 使用。执行任何破坏性或重大操作（包括编辑/删除/移动笔记、运行代码或执行命令）前，请先在我的 Agent 界面中向我确认。切勿泄露或重复 bearer 令牌。',
             ].join('\n');
             await platformUtils.writeText(guide);
             pushMsg(i18n('aiSidebarMcpPromptCopied'));
@@ -16375,7 +16375,7 @@
                 </div>
             {/if}
 
-            <!-- 模型选择器（问答模式：支持单选/多选切换；其他模式：仅单选） -->
+            <!-- 模型选择器（问答模式：支持单选/多选切换；Agent/绘图模式：仅单选；MCP 模式不显示） -->
             {#if chatMode === 'ask'}
                 <div class="ai-sidebar__multi-model-selector-wrapper">
                     {#if !enableMultiModel && showThinkingToggle}
@@ -16422,7 +16422,7 @@
                         on:toggleThinking={handleToggleModelThinking}
                     />
                 </div>
-            {:else}
+            {:else if chatMode !== 'mcp'}
                 <div class="ai-sidebar__model-selector-container">
                     {#if chatMode !== 'draw' && showThinkingToggle}
                         <div class="ai-sidebar__thinking-toggle-container">
