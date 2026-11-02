@@ -286,3 +286,39 @@
 .ai-sidebar__editor-wrapper .protyle-wysiwyg [contenteditable="true"] {
   outline: none !important;
 }
+
+/* MCP 模式：收起聊天、模型、附件及发送操作，仅保留模式、授权工具与连接提示词。 */
+.ai-sidebar--mcp {
+  .ai-sidebar__header,
+  .ai-sidebar__messages,
+  .ai-sidebar__context-docs {
+    display: none !important;
+  }
+
+  .ai-sidebar__input-container > :not(.ai-sidebar__mode-selector) {
+    display: none !important;
+  }
+
+  .ai-sidebar__mode-selector {
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 12px;
+    margin: 0;
+  }
+
+  .ai-sidebar__mcp-actions {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+
+  .ai-sidebar__mcp-status {
+    flex-basis: 100%;
+    padding: 2px 4px;
+    color: var(--b3-theme-on-surface);
+    font-size: 12px;
+    opacity: 0.78;
+  }
+}

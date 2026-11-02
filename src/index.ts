@@ -38,6 +38,7 @@ import { ChangelogUtils } from "./utils/changelogNotify";
 import { bindWebviewDevTools, disposeWebviewDevTools } from "./utils/webviewDevTools";
 export const SETTINGS_FILE = "settings.json";
 import { initializeMcpTools } from "./tools";
+import { copilotMcpGateway } from "./tools/mcpGateway";
 const WEBVIEW_HISTORY_FILE = "webview-history.json";
 const WEBAPP_ICON_DIR = "/data/storage/petal/siyuan-plugin-copilot/webappIcon";
 const MAX_HISTORY_COUNT = 200;
@@ -70,6 +71,7 @@ export default class PluginSample extends Plugin {
     private domainIconMap: Map<string, string> = new Map(); // 缓存域名与图标文件名的映射
     private registeredDocks: Set<string> = new Set();
     private settingsStorage?: SettingsStorage;
+    private mcpGateway = copilotMcpGateway;
 
     private getSettingsStorage(): SettingsStorage {
         return this.settingsStorage ||= new SettingsStorage(this);
@@ -2008,6 +2010,9 @@ export default class PluginSample extends Plugin {
             console.error("Failed to initialize Siyuan MCP tools:", mcpError);
         }
 
+        // Start the authenticated loopback endpoint. Remote agents should connect through a secure tunnel.
+        await this.mcpGateway.start(this);
+
         this.addIcons(`
     <symbol id="iconCopilot" viewBox="0 0 1024 1024">
     <path d="M369.579 617.984a42.71 42.71 0 1 1 85.461 0v85.205a42.71 42.71 0 1 1-85.461 0v-85.205z m284.8 0a42.71 42.71 0 1 0-85.462 0v85.205a42.71 42.71 0 1 0 85.462 0v-85.205zM511.957 171.861c-36.053-52.01-110.848-55.893-168.32-50.688-65.834 6.571-121.301 29.227-152.49 62.464-54.102 59.136-56.576 183.083-30.507 251.307-2.603 11.69-5.12 23.51-6.912 36.053C105.515 483.67 56.32 551.98 56.32 600.832v92.245c0 25.6 11.947 48.982 33.067 64.939 120.49 89.515 270.677 158.89 422.613 158.89 151.893 0 302.08-69.375 422.57-158.89a80.64 80.64 0 0 0 33.067-64.896v-92.288c0-48.853-49.194-117.163-97.408-129.835-1.792-12.544-4.266-24.32-6.912-36.01 26.07-68.267 23.552-192.214-30.506-251.307-31.19-33.28-86.614-55.893-152.491-62.507-57.472-5.162-132.267-1.28-168.363 50.688z m284.8 574.294c-65.493 36.437-174.293 85.333-284.8 85.333S292.693 782.592 227.2 746.155V498.73c105.685 40.96 227.285 19.84 284.715-75.008H512c57.43 94.848 179.03 115.925 284.715 75.008v247.381z m-341.76-454.827c0 67.67-20.48 141.312-113.92 141.312s-111.189-22.357-111.189-85.205c0-99.67 15.19-142.336 141.483-142.336 72.96 0 83.626 23.466 83.626 86.272z m113.92 0c0-62.805 10.667-86.187 83.67-86.187 126.293 0 141.482 42.667 141.482 142.294 0 62.848-17.792 85.205-111.232 85.205s-113.92-73.643-113.92-141.27z" p-id="5384"></path>
@@ -2392,6 +2397,7 @@ export default class PluginSample extends Plugin {
     onunload() {
         for (const element of this.webViewDevToolsCleanups.keys()) this.disposeWebAppView(element);
         disposeWebviewDevTools();
+        this.mcpGateway.stop();
         this.settingsStorage?.dispose();
         disposeChatGPTClient();
         configureChatGPTStorage(null);
@@ -2511,6 +2517,16 @@ export default class PluginSample extends Plugin {
      * 打开设置对话框
      */
     // 重写 openSetting 方法
+    async getMcpGatewayInfo() {
+        const settings = await this.loadSettings();
+        const gateway = this.mcpGateway.getStatus();
+        const configuredUrl = String(settings.mcpPublicUrl || '').trim();
+        const endpoint = configuredUrl
+            ? (configuredUrl.endsWith('/mcp') ? configuredUrl : `${configuredUrl.replace(/\/$/, '')}/mcp`)
+            : this.mcpGateway.getLocalEndpoint();
+        return { endpoint, token: String(settings.mcpAuthToken || ''), status: gateway };
+    }
+
     async openSetting() {
         let dialog = new Dialog({
             title: i18n("settingsSettingsPanel"),

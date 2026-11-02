@@ -1224,6 +1224,19 @@
             ],
         },
         {
+            name: i18n('aiSidebarMcpGatewayGroup'),
+            items: [
+                {
+                    key: 'mcpPublicUrl',
+                    value: settings.mcpPublicUrl || '',
+                    type: 'textinput',
+                    title: i18n('aiSidebarMcpPublicUrlTitle'),
+                    description: i18n('aiSidebarMcpPublicUrlDescription'),
+                    placeholder: i18n('aiSidebarMcpPublicUrlPlaceholder'),
+                },
+            ],
+        },
+        {
             name: i18n('settingsSettingsGroupSoul'),
             items: [
                 {

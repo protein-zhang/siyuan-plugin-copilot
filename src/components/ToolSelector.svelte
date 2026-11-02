@@ -13,6 +13,7 @@
     export let selectedTools: ToolConfig[] = [];
     export let toolAutoApproveSettings: Record<string, boolean> = {}; // 所有工具的 autoApprove 配置
     export let categories: Record<string, { tools: string[] }> = TOOL_CATEGORIES; // 工具分类配置
+    export let excludeTools: string[] = []; // 特定用途选择器排除不适用的交互工具
 
     const dispatch = createEventDispatcher();
 
@@ -44,7 +45,9 @@
     $: categorizedTools = (() => {
         const result: Record<string, Tool[]> = {};
         for (const [category, config] of Object.entries(categories)) {
+            const excluded = new Set(excludeTools);
             const mappedTools = config.tools
+                .filter(toolName => !excluded.has(toolName))
                 .map(toolName => AVAILABLE_TOOLS.find(tool => tool.function.name === toolName))
                 .filter(tool => tool !== undefined) as Tool[];
 

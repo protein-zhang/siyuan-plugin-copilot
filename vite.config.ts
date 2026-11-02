@@ -51,6 +51,10 @@ export default defineConfig({
             writeBundle: {
                 sequential: true,
                 handler() {
+                    if (process.env.SKIP_SIYUAN_AUTO_COPY === '1') {
+                        console.log('Skipping automatic copy to SiYuan (SKIP_SIYUAN_AUTO_COPY=1).');
+                        return;
+                    }
                     try {
                         // Run the copy script after build, using the current output directory
                         execSync(`node --no-warnings ./scripts/make_dev_copy.js --source ${outputDir}`, {

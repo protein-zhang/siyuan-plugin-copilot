@@ -64,3 +64,19 @@ If you have any issues or suggestions, please feel free to raise them in [GitHub
 If you find this plugin useful, you're welcome to buy me a coffee. Your support helps me maintain and improve this plugin and develop new ones.
 
 [Buy me a coffee](https://pancake.waffo.ai/store/achuan-2-fdbho4ye/product/PROD_3F7Aa7c2NQlz9KmxcgxjQ7?type=onetime&currency=USD)
+
+### MCP mode: expose selected tools to external agents
+
+MCP mode publishes the existing Copilot tools through an MCP Streamable HTTP endpoint. In this mode, the sidebar keeps only the tool allow-list selector and the copy-connection-guide action. The MCP allow-list is independent from the Agent and Ask tool selections.
+
+- The desktop plugin listens on `127.0.0.1:17331/mcp` and generates a Bearer token automatically.
+- For remote agents, tunnel local port `17331` over HTTPS (for example, `ngrok http 17331`) and enter the public MCP URL under **Settings → MCP gateway**.
+- Only selected tools appear in `tools/list` and can be called. The interactive question-card tool is omitted because it requires the Copilot UI.
+- The server supports `tools/list`, `tools/call`, and the `mcp-gateway://about` guide. The copied prompt includes the bearer token; share it only with trusted agents.
+- The listener binds to loopback only. Do not expose port `17331` directly to the public internet; use an HTTPS tunnel or protected reverse proxy.
+
+### Windows one-click scripts
+
+Double-click `一键构建并安装.bat` to install missing dependencies, build the plugin, and copy the result into the detected SiYuan workspace plugin directory. SiYuan must be running; if there are multiple workspaces, choose one. Refresh the plugin list and enable/update the plugin after installation.
+
+Double-click `一键压缩源码.bat` to create a source archive under `source-archives/`. The archive omits `.git`, `node_modules`, build output, caches, logs, and prior archives.

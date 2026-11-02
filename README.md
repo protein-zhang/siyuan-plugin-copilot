@@ -145,3 +145,18 @@ Made with [contrib.rocks](https://contrib.rocks).
 如果喜欢我的插件，欢迎给GitHub仓库点star和微信赞赏，这会激励我继续完善此插件和开发新插件。
 
 <img alt="image" src="https://assets.b3logfile.com/siyuan/1610205759005/assets/network-asset-image-20250614123558-fuhir5v.png" />
+
+### MCP 模式：向外部 Agent 暴露选定工具
+
+MCP 模式把已存在的 Copilot 工具能力作为 MCP Streamable HTTP 服务提供给外部 Agent。切换到 **MCP 模式**后，侧栏仅保留“选择暴露工具”和“复制连接提示词”两个操作；外部工具白名单与 Agent/问答模式相互独立。
+
+- 服务仅在思源桌面版运行，监听 `127.0.0.1:17331/mcp`，并自动生成 Bearer Token。
+- 外部 Agent 无法直接访问本机回环地址时，可用 HTTPS 隧道映射本机 `17331` 端口（例如 `ngrok http 17331`），然后在 **设置 → MCP 网关** 填入公网 MCP URL，格式为 `https://你的隧道域名/mcp`。
+- MCP 模式中的工具选择器就是对外授权白名单；未选择的工具不会出现在 `tools/list`，也不能被调用。问答卡片工具不暴露，因为它需要 Copilot 窗口内交互。
+- MCP 服务支持 `tools/list`、`tools/call`，并提供 `mcp-gateway://about` 使用说明。复制的提示词包含 URL 和 Bearer Token；请仅发给可信的 Agent，不要放入公开文档或提交到 Git。
+- 服务只绑定本机，不要把 `17331` 端口直接暴露到公网。远程访问务必使用 HTTPS 隧道或受保护的反向代理。
+
+### Windows 一键构建安装与源码归档
+
+- 双击项目根目录的 `一键构建并安装.bat`：自动安装依赖（如果缺少）、构建插件、检测思源工作空间并将产物复制到 `data/plugins/siyuan-plugin-copilot`。需要先启动思源；多工作空间时会提示选择。安装后在思源插件列表刷新并启用/更新插件。
+- 双击 `一键压缩源码.bat`：生成源码压缩包到 `source-archives/`。脚本会排除 `.git`、`node_modules`、构建产物、缓存、日志和以前生成的归档包；依赖锁文件和项目源码仍会保留。

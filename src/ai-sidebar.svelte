@@ -123,6 +123,48 @@
         return settings.aiSystemPromptAsk || '';
     }
 
+    async function copyMcpAgentGuide() {
+        try {
+            if (settings && settings.mcpModeEnabled !== true) {
+                settings = { ...settings, mcpModeEnabled: true };
+                await plugin.saveSettings(settings);
+            }
+            const info = await plugin.getMcpGatewayInfo();
+            if (info?.status?.status !== 'listening') {
+                pushErrMsg(`${i18n('aiSidebarMcpServerUnavailable')}: ${info?.status?.error || 'MCP listener is not running.'}`);
+                return;
+            }
+            if (!mcpToolCount) {
+                pushErrMsg(i18n('aiSidebarMcpNoTools'));
+                return;
+            }
+            const guide = [
+                'Connect to my SiYuan Copilot MCP server using the configuration below.',
+                `MCP URL: ${info.endpoint}`,
+                `Authorization: Bearer ${info.token}`,
+                '',
+                'First read the resource mcp-gateway://about, then call tools/list. The tools returned by tools/list are the complete allow-list; do not call or assume any other tools.',
+                'Use each tool schema exactly as advertised. Ask me in your agent interface before any destructive or consequential action, including editing/deleting/moving notes, running code, or executing commands. Never expose or repeat the bearer token.',
+            ].join('\n');
+            await platformUtils.writeText(guide);
+            pushMsg(i18n('aiSidebarMcpPromptCopied'));
+        } catch (error) {
+            console.error('[MCP] Failed to copy connection guide:', error);
+            pushErrMsg(i18n('aiSidebarMcpCopyFailed'));
+        }
+    }
+
+    async function saveMcpToolSelection() {
+        if (!settings) return;
+        settings = { ...settings, mcpSelectedTools: [...selectedToolsMcp], mcpToolSelectionConfigured: true };
+        try {
+            await plugin.saveSettings(settings);
+        } catch (error) {
+            console.error('[MCP] Failed to save exposed tools:', error);
+            pushErrMsg(i18n('aiSidebarMcpSaveToolsFailed'));
+        }
+    }
+
     const HIDDEN_SYSTEM_TOOL_NAMES = new Set([
         'get_siyuan_skills',
     ]);
@@ -881,14 +923,14 @@
             thinkingEffort?: ThinkingEffort;
         }>,
         enableMultiModel: false,
-        chatMode: 'ask' as 'ask' | 'agent' | 'draw',
+        chatMode: 'ask' as 'ask' | 'agent' | 'draw' | 'mcp',
         toolSelectionEnabled: false,
         selectedTools: [] as ToolConfig[],
         toolAutoApproveSettings: {} as Record<string, boolean>,
     };
 
     // 对话模式
-    type ChatMode = 'ask' | 'agent' | 'draw';
+    type ChatMode = 'ask' | 'agent' | 'draw' | 'mcp';
     let chatMode: ChatMode = 'ask';
     let previousChatMode: ChatMode = 'ask'; // 用于模式切换时恢复对应模型
     let lastRememberedChatMode: ChatMode = 'ask';
@@ -1929,6 +1971,9 @@
     let isToolSelectorOpen = false;
     let selectedTools: ToolConfig[] = []; // 选中的工具配置列表
     let selectedToolsAsk: ToolConfig[] = []; // 问答模式选中的工具配置列表
+    let selectedToolsMcp: ToolConfig[] = []; // MCP 对外暴露的独立授权白名单
+    $: mcpToolCount = new Set((selectedToolsMcp || []).filter(t => t.name !== 'question' && AVAILABLE_TOOLS.some(tool => tool.function.name === t.name)).map(t => t.name)).size;
+    let mcpGatewayStatus = '';
     let toolAutoApproveSettings: Record<string, boolean> = {}; // 所有工具的 autoApprove 配置（包括未选中的）
     let toolAutoApproveSettingsAsk: Record<string, boolean> = {}; // 问答模式所有工具的 autoApprove 配置
     // 用户选择的工具数量：排除系统隐藏工具、排除已失效工具、按名称去重
@@ -2005,12 +2050,19 @@
             };
         }
         // 仅在本视图切换模式时保存；接收其他窗口的设置不能把本地模式写回去。
-        if (lastRememberedChatMode !== chatMode) {
-            lastRememberedChatMode = chatMode;
-            if (settings.lastUsedChatMode !== chatMode) {
-                settings.lastUsedChatMode = chatMode;
-                plugin.saveSettings(settings);
-            }
+        const modeChangedInThisView = lastRememberedChatMode !== chatMode;
+        if (modeChangedInThisView) lastRememberedChatMode = chatMode;
+        const shouldEnableMcp = chatMode === 'mcp';
+        const shouldSaveMode =
+            (modeChangedInThisView && settings.lastUsedChatMode !== chatMode) ||
+            settings.mcpModeEnabled !== shouldEnableMcp;
+        if (shouldSaveMode) {
+            settings = {
+                ...settings,
+                ...(modeChangedInThisView ? { lastUsedChatMode: chatMode } : {}),
+                mcpModeEnabled: shouldEnableMcp,
+            };
+            plugin.saveSettings(settings).catch((error: unknown) => console.error('[MCP] Failed to update mode:', error));
         }
     }
     let toolCallsInProgress: Set<string> = new Set(); // 正在执行的工具调用ID
@@ -2221,7 +2273,9 @@
         // 初始化模式
         if (!settings.selectedModelPresetId && settings.lastUsedChatMode) {
             chatMode =
-                settings.lastUsedChatMode === 'agent' || settings.lastUsedChatMode === 'draw'
+                settings.lastUsedChatMode === 'agent' ||
+                settings.lastUsedChatMode === 'draw' ||
+                settings.lastUsedChatMode === 'mcp'
                     ? settings.lastUsedChatMode
                     : 'ask';
         }
@@ -11311,6 +11365,16 @@
             } else {
                 selectedToolsAsk = [];
             }
+            selectedToolsMcp = Array.isArray(settings?.mcpSelectedTools) ? settings.mcpSelectedTools : [];
+            if (settings?.mcpToolSelectionConfigured !== true) {
+                // First-use convenience: seed from Agent tools once; an explicitly empty list remains empty later.
+                selectedToolsMcp = Array.isArray(data?.selectedTools)
+                    ? data.selectedTools.filter((tool: ToolConfig) => tool.name !== 'question')
+                    : [];
+                settings.mcpSelectedTools = selectedToolsMcp;
+                settings.mcpToolSelectionConfigured = true;
+                void plugin.saveSettings(settings);
+            }
             if (
                 data?.toolAutoApproveSettingsAsk &&
                 typeof data.toolAutoApproveSettingsAsk === 'object'
@@ -13334,7 +13398,7 @@
     $: messageGroups = groupMessages(messages);
 </script>
 
-<div class="ai-sidebar" class:ai-sidebar--fullscreen={isFullscreen} bind:this={sidebarContainer}>
+<div class="ai-sidebar" class:ai-sidebar--fullscreen={isFullscreen} class:ai-sidebar--mcp={chatMode === 'mcp'} bind:this={sidebarContainer}>
     <div class="ai-sidebar__header">
         <h3 class="ai-sidebar__title">
             <button
@@ -16277,6 +16341,7 @@
                 <option value="ask">{i18n('aiSidebarModeAsk')}</option>
                 <option value="agent">{i18n('aiSidebarModeAgent')}</option>
                 <option value="draw">{i18n('aiSidebarModeDraw')}</option>
+                <option value="mcp">{i18n('aiSidebarModeMcp')}</option>
             </select>
 
             <!-- Agent/Ask 模式工具选择按钮 -->
@@ -16288,6 +16353,26 @@
                 >
                     <span>{i18n('aiSidebarAgentTools')} ({userToolCount})</span>
                 </button>
+            {/if}
+
+            {#if chatMode === 'mcp'}
+                <div class="ai-sidebar__mcp-actions">
+                    <button
+                        class="b3-button b3-button--text ai-sidebar__tool-selector-btn"
+                        on:click={() => (isToolSelectorOpen = !isToolSelectorOpen)}
+                        title={i18n('aiSidebarMcpSelectToolsHint')}
+                    >
+                        {i18n('aiSidebarMcpSelectTools', { count: mcpToolCount })}
+                    </button>
+                    <button
+                        class="b3-button b3-button--text"
+                        on:click={copyMcpAgentGuide}
+                        title={i18n('aiSidebarMcpCopyPromptHint')}
+                    >
+                        {i18n('aiSidebarMcpCopyPrompt')}
+                    </button>
+                    <span class="ai-sidebar__mcp-status">{i18n('aiSidebarMcpLoopbackStatus')}</span>
+                </div>
             {/if}
 
             <!-- 模型选择器（问答模式：支持单选/多选切换；其他模式：仅单选） -->
@@ -17168,6 +17253,14 @@
                 bind:toolAutoApproveSettings={toolAutoApproveSettingsAsk}
                 categories={QA_TOOL_CATEGORIES}
                 on:close={() => (isToolSelectorOpen = false)}
+            />
+        {:else if chatMode === 'mcp'}
+            <ToolSelector
+                bind:selectedTools={selectedToolsMcp}
+                bind:toolAutoApproveSettings
+                categories={TOOL_CATEGORIES}
+                excludeTools={['question']}
+                on:close={() => { isToolSelectorOpen = false; void saveMcpToolSelection(); }}
             />
         {:else}
             <ToolSelector

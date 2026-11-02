@@ -1077,5 +1077,20 @@
     "toolsCommandStderr": "\n[标准错误输出]:\n{0}",
     "toolsCommandError": "\n[执行错误]:\n{0}",
     "toolsCommandNoOutput": "[命令执行完毕，无输出内容]",
-    "toolsCommandFailed": "错误：执行命令失败。{0}"
+    "toolsCommandFailed": "错误：执行命令失败。{0}",
+    "aiSidebarModeMcp": "MCP 模式",
+    "aiSidebarMcpSelectTools": "选择暴露工具（${count}）",
+    "aiSidebarMcpSelectToolsHint": "选择外部 MCP Agent 可调用的思源 / Copilot 工具；未勾选工具不会暴露。",
+    "aiSidebarMcpCopyPrompt": "复制连接提示词",
+    "aiSidebarMcpCopyPromptHint": "复制 MCP 地址、授权令牌和外部 Agent 使用说明。请勿将令牌公开分享。",
+    "aiSidebarMcpLoopbackStatus": "仅本机回环监听 127.0.0.1:17331；远程 Agent 请在设置中填入 HTTPS 隧道地址。",
+    "aiSidebarMcpServerUnavailable": "MCP 服务未运行，请使用思源桌面版并重启插件后重试",
+    "aiSidebarMcpNoTools": "尚未选择任何可暴露工具，请先选择工具",
+    "aiSidebarMcpPromptCopied": "MCP 连接提示词已复制；其中包含授权令牌，请妥善保管",
+    "aiSidebarMcpCopyFailed": "复制 MCP 提示词失败",
+    "aiSidebarMcpSaveToolsFailed": "保存 MCP 暴露工具失败",
+    "aiSidebarMcpGatewayGroup": "MCP 网关",
+    "aiSidebarMcpPublicUrlTitle": "外部 MCP 地址（可选）",
+    "aiSidebarMcpPublicUrlDescription": "粘贴 HTTPS 隧道或反向代理映射到本机 17331 端口的完整 MCP 地址，例如 https://example.ngrok-free.app/mcp。留空时复制提示词会使用本机地址；公网访问请务必启用 HTTPS。",
+    "aiSidebarMcpPublicUrlPlaceholder": "https://your-tunnel.example/mcp"
 }

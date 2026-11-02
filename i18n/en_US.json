@@ -1077,5 +1077,20 @@
     "toolsCommandStderr": "\n[Standard error]:\n{0}",
     "toolsCommandError": "\n[Execution error]:\n{0}",
     "toolsCommandNoOutput": "[Command finished without output]",
-    "toolsCommandFailed": "Error: Command execution failed. {0}"
+    "toolsCommandFailed": "Error: Command execution failed. {0}",
+    "aiSidebarModeMcp": "MCP mode",
+    "aiSidebarMcpSelectTools": "Choose exposed tools (${count})",
+    "aiSidebarMcpSelectToolsHint": "Choose which SiYuan / Copilot tools external MCP agents may call. Unselected tools are not exposed.",
+    "aiSidebarMcpCopyPrompt": "Copy connection guide",
+    "aiSidebarMcpCopyPromptHint": "Copy the MCP URL, bearer token, and usage instructions. Do not share the token publicly.",
+    "aiSidebarMcpLoopbackStatus": "Loopback only at 127.0.0.1:17331. For remote agents, configure an HTTPS tunnel URL in Settings.",
+    "aiSidebarMcpServerUnavailable": "MCP server is not running. Use SiYuan Desktop and restart the plugin.",
+    "aiSidebarMcpNoTools": "No tools are selected for exposure. Choose tools first.",
+    "aiSidebarMcpPromptCopied": "MCP connection guide copied. It contains an authorization token; keep it private.",
+    "aiSidebarMcpCopyFailed": "Failed to copy the MCP guide.",
+    "aiSidebarMcpSaveToolsFailed": "Failed to save the exposed MCP tools.",
+    "aiSidebarMcpGatewayGroup": "MCP gateway",
+    "aiSidebarMcpPublicUrlTitle": "External MCP URL (optional)",
+    "aiSidebarMcpPublicUrlDescription": "Paste the HTTPS tunnel or reverse-proxy URL mapped to local port 17331, e.g. https://example.ngrok-free.app/mcp. Leave blank to use the local URL. Always use HTTPS for remote access.",
+    "aiSidebarMcpPublicUrlPlaceholder": "https://your-tunnel.example/mcp"
 }
