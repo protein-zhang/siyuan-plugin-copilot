@@ -3264,6 +3264,19 @@
         isFullscreen = !isFullscreen;
     }
 
+    function handleFullscreenKeydown(event: KeyboardEvent) {
+        if (!isFullscreen || event.key !== 'Escape' || event.defaultPrevented || event.isComposing || event.repeat) return;
+        // 弹窗和选择器优先处理 Esc，避免关闭弹窗时同时退出全屏。
+        if (isEditDialogOpen || isWebLinkDialogOpen || isSearchDialogOpen || isDiffDialogOpen ||
+            isPromptManagerOpen || isPromptSelectorOpen || isSessionManagerOpen || isImageViewerOpen ||
+            isTranslateDialogOpen || isWebAppManagerOpen || isToolSelectorOpen ||
+            isToolApprovalDialogOpen || isSaveToNoteDialogOpen) return;
+
+        event.preventDefault();
+        event.stopPropagation();
+        isFullscreen = false;
+    }
+
     // 滚动到底部
     async function scrollToBottom(force = false) {
         await tick();
@@ -13398,6 +13411,8 @@
     $: messageGroups = groupMessages(messages);
 </script>
 
+<svelte:document on:keydown={handleFullscreenKeydown} />
+
 <div class="ai-sidebar" class:ai-sidebar--fullscreen={isFullscreen} class:ai-sidebar--mcp={chatMode === 'mcp'} bind:this={sidebarContainer}>
     <div class="ai-sidebar__header">
         <h3 class="ai-sidebar__title">
@@ -13531,7 +13546,7 @@
             >
                 <svg class="b3-button__icon"><use xlink:href="#iconSettings"></use></svg>
             </button>
-            {#if !isMobile}
+            {#if !isMobile && !isFullscreen}
                 <button
                     class="b3-button b3-button--text ai-sidebar__minimize-btn"
                     on:click={minimize}
@@ -20989,6 +21004,20 @@
         background: var(--b3-theme-surface) !important;
         border-bottom: 1px solid var(--b3-border-color) !important;
         box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important;
+        padding-left: max(clamp(4px, 2cqw, 12px), var(--b3-toolbar-left-mac, 0px));
+    }
+
+    :global(html[data-frontend^="desktop"]) :global(body.body--windows)
+        .ai-sidebar--fullscreen .ai-sidebar__header,
+    :global(html[data-frontend^="desktop"]) :global(body.body--linux)
+        .ai-sidebar--fullscreen .ai-sidebar__header {
+        // 与官方全屏工具栏一致，仅在标题栏预留窗口控件空间，兼容旧版思源。
+        padding-right: calc(
+            clamp(4px, 2cqw, 12px) +
+                var(--b3-window-controls-width, var(--b3-fullscreen-controls-width, 138px))
+        );
+        min-height: var(--b3-window-controls-height, 0px);
+        box-sizing: border-box;
     }
 
     .ai-sidebar--fullscreen .ai-sidebar__messages {

@@ -1841,6 +1841,9 @@ export default class PluginSample extends Plugin {
                                     hideSearchBar();
                                 } else if (showFullscreenButton && isFullscreen) {
                                     toggleFullscreen?.();
+                                } else if (isCollectionDock) {
+                                    // 网页内的按键不会冒泡到宿主，转交所属的集合 Dock 退出全屏。
+                                    element.dispatchEvent(new CustomEvent('copilot-webapp-escape', { bubbles: true }));
                                 }
                             }
                             return;
@@ -1893,7 +1896,7 @@ export default class PluginSample extends Plugin {
                                             return false;
                                         }` : ''}
                                         // Esc 关闭搜索
-                                        if (e.key === 'Escape') {
+                                        if (e.key === 'Escape' && !e.isComposing && !e.repeat) {
                                             e.preventDefault();
                                             e.stopPropagation();
                                             console.log('__SIYUAN_COPILOT_HOTKEY__:escape');
