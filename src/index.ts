@@ -2530,6 +2530,11 @@ export default class PluginSample extends Plugin {
         return { endpoint, token: String(settings.mcpAuthToken || ''), status: gateway };
     }
 
+    async restartMcpGateway() {
+        await this.mcpGateway.restart(this);
+        return this.mcpGateway.getStatus();
+    }
+
     async openSetting() {
         let dialog = new Dialog({
             title: i18n("settingsSettingsPanel"),

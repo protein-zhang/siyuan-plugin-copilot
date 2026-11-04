@@ -84,16 +84,29 @@ export class CopilotMcpGateway {
             this.status = 'starting';
             this.error = '';
 
-            server.on('error', (error: any) => {
-                this.status = 'error';
-                this.error = error?.code === 'EADDRINUSE'
-                    ? `Port ${MCP_PORT} is already in use.`
-                    : String(error?.message || error);
-                console.error('[Copilot MCP] HTTP server error:', error);
-            });
-            server.listen(MCP_PORT, '127.0.0.1', () => {
-                this.status = 'listening';
-                console.info(`[Copilot MCP] Listening on ${this.getLocalEndpoint()}`);
+            await new Promise<void>((resolve) => {
+                let settled = false;
+                const finish = () => {
+                    if (settled) return;
+                    settled = true;
+                    resolve();
+                };
+
+                server.on('error', (error: any) => {
+                    this.server = null;
+                    this.status = 'error';
+                    this.error = error?.code === 'EADDRINUSE'
+                        ? `Port ${MCP_PORT} is already in use.`
+                        : String(error?.message || error);
+                    console.error('[Copilot MCP] HTTP server error:', error);
+                    finish();
+                });
+                server.listen(MCP_PORT, '127.0.0.1', () => {
+                    this.status = 'listening';
+                    this.error = '';
+                    console.info(`[Copilot MCP] Listening on ${this.getLocalEndpoint()}`);
+                    finish();
+                });
             });
         } catch (error) {
             this.server = null;
@@ -103,14 +116,33 @@ export class CopilotMcpGateway {
         }
     }
 
-    stop(): void {
-        if (this.server) {
-            try { this.server.close(); } catch (error) {
-                console.warn('[Copilot MCP] Failed to close server:', error);
-            }
-        }
+    stop(): Promise<void> {
+        const server = this.server;
         this.server = null;
         this.status = 'stopped';
+        if (!server) return Promise.resolve();
+
+        return new Promise<void>((resolve) => {
+            const timer = setTimeout(resolve, 2000);
+            try {
+                if (typeof server.closeAllConnections === 'function') {
+                    server.closeAllConnections();
+                }
+                server.close(() => {
+                    clearTimeout(timer);
+                    resolve();
+                });
+            } catch (error) {
+                console.warn('[Copilot MCP] Failed to close server:', error);
+                clearTimeout(timer);
+                resolve();
+            }
+        });
+    }
+
+    async restart(host: GatewayHost): Promise<void> {
+        await this.stop();
+        await this.start(host);
     }
 
     private writeJson(res: any, statusCode: number, body: any, protocolVersion?: string) {

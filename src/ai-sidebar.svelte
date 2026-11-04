@@ -123,7 +123,10 @@
         return settings.aiSystemPromptAsk || '';
     }
 
-    async function copyMcpAgentGuide() {
+    let isMcpGuideDialogOpen = false;
+    let mcpGuideText = '';
+
+    async function openMcpGuideDialog() {
         try {
             if (settings && settings.mcpModeEnabled !== true) {
                 settings = { ...settings, mcpModeEnabled: true };
@@ -138,7 +141,7 @@
                 pushErrMsg(i18n('aiSidebarMcpNoTools'));
                 return;
             }
-            const guide = [
+            mcpGuideText = [
                 '请使用以下配置连接我的 SiYuan Copilot MCP 服务：',
                 `MCP 地址：${info.endpoint}`,
                 `Authorization: Bearer ${info.token}`,
@@ -146,8 +149,27 @@
                 '请先读取资源 mcp-gateway://about，然后调用 tools/list。tools/list 返回的工具即为完整允许列表，不要调用或假设其他工具。',
                 '请严格按照每个工具公布的 schema 使用。执行任何破坏性或重大操作（包括编辑/删除/移动笔记、运行代码或执行命令）前，请先在我的 Agent 界面中向我确认。切勿泄露或重复 bearer 令牌。',
             ].join('\n');
-            await platformUtils.writeText(guide);
+            isMcpGuideDialogOpen = true;
+        } catch (error) {
+            console.error('[MCP] Failed to prepare connection guide:', error);
+            pushErrMsg(i18n('aiSidebarMcpCopyFailed'));
+        }
+    }
+
+    function closeMcpGuideDialog() {
+        isMcpGuideDialogOpen = false;
+    }
+
+    async function confirmMcpGuideCopy() {
+        const text = mcpGuideText.trim();
+        if (!text) {
+            pushErrMsg(i18n('aiSidebarMcpGuideDialogEmpty'));
+            return;
+        }
+        try {
+            await platformUtils.writeText(text);
             pushMsg(i18n('aiSidebarMcpPromptCopied'));
+            isMcpGuideDialogOpen = false;
         } catch (error) {
             console.error('[MCP] Failed to copy connection guide:', error);
             pushErrMsg(i18n('aiSidebarMcpCopyFailed'));
@@ -162,6 +184,26 @@
         } catch (error) {
             console.error('[MCP] Failed to save exposed tools:', error);
             pushErrMsg(i18n('aiSidebarMcpSaveToolsFailed'));
+        }
+    }
+
+    let isRestartingMcp = false;
+
+    async function restartMcpService() {
+        if (isRestartingMcp) return;
+        isRestartingMcp = true;
+        try {
+            const status = await plugin.restartMcpGateway();
+            if (status?.status === 'listening') {
+                pushMsg(i18n('aiSidebarMcpRestartSuccess'));
+            } else {
+                pushErrMsg(`${i18n('aiSidebarMcpRestartFailed')}: ${status?.error || status?.status || ''}`);
+            }
+        } catch (error) {
+            console.error('[MCP] Failed to restart service:', error);
+            pushErrMsg(i18n('aiSidebarMcpRestartFailed'));
+        } finally {
+            isRestartingMcp = false;
         }
     }
 
@@ -16381,10 +16423,18 @@
                     </button>
                     <button
                         class="b3-button b3-button--text"
-                        on:click={copyMcpAgentGuide}
+                        on:click={openMcpGuideDialog}
                         title={i18n('aiSidebarMcpCopyPromptHint')}
                     >
                         {i18n('aiSidebarMcpCopyPrompt')}
+                    </button>
+                    <button
+                        class="b3-button b3-button--text"
+                        on:click={restartMcpService}
+                        disabled={isRestartingMcp}
+                        title={i18n('aiSidebarMcpRestartHint')}
+                    >
+                        {isRestartingMcp ? i18n('aiSidebarMcpRestarting') : i18n('aiSidebarMcpRestart')}
                     </button>
                     <span class="ai-sidebar__mcp-status">{i18n('aiSidebarMcpLoopbackStatus')}</span>
                 </div>
@@ -17257,6 +17307,44 @@
                     </span>
                 </button>
             {/if}
+        </div>
+    {/if}
+
+    <!-- MCP 连接提示词编辑对话框 -->
+    {#if isMcpGuideDialogOpen}
+        <div use:floatingLayer class="save-to-note-dialog__overlay" on:click={closeMcpGuideDialog}></div>
+        <div use:floatingLayer class="save-to-note-dialog mcp-guide-dialog">
+            <div class="save-to-note-dialog__header">
+                <h3>{i18n('aiSidebarMcpGuideDialogTitle')}</h3>
+                <button
+                    class="b3-button b3-button--text"
+                    on:click={closeMcpGuideDialog}
+                    title={i18n('commonClose')}
+                >
+                    <svg class="b3-button__icon"><use xlink:href="#iconClose"></use></svg>
+                </button>
+            </div>
+            <div class="save-to-note-dialog__content">
+                <div class="save-to-note-dialog__field">
+                    <label>{i18n('aiSidebarMcpGuideDialogTip')}</label>
+                    <textarea
+                        class="mcp-guide-dialog__textarea"
+                        bind:value={mcpGuideText}
+                        rows="12"
+                    ></textarea>
+                </div>
+            </div>
+            <div class="save-to-note-dialog__footer">
+                <span class="mcp-guide-dialog__warning">{i18n('aiSidebarMcpGuideDialogWarning')}</span>
+                <div class="save-to-note-dialog__footer-buttons">
+                    <button class="b3-button b3-button--cancel" on:click={closeMcpGuideDialog}>
+                        {i18n('commonCancel')}
+                    </button>
+                    <button class="b3-button b3-button--primary" on:click={confirmMcpGuideCopy}>
+                        {i18n('aiSidebarMcpGuideDialogCopy')}
+                    </button>
+                </div>
+            </div>
         </div>
     {/if}
 
@@ -19968,6 +20056,37 @@
         .b3-button {
             min-width: 100px;
         }
+    }
+
+    // MCP 连接提示词编辑对话框样式
+    .mcp-guide-dialog {
+        max-width: 620px;
+    }
+
+    .mcp-guide-dialog__textarea {
+        width: 100%;
+        min-height: 240px;
+        padding: 8px;
+        font-family: var(--b3-font-family-code);
+        font-size: 13px;
+        line-height: 1.5;
+        border: 1px solid var(--b3-border-color);
+        border-radius: 4px;
+        background: var(--b3-theme-background);
+        color: var(--b3-theme-on-background);
+        resize: vertical;
+
+        &:focus {
+            outline: none;
+            border-color: var(--b3-theme-primary);
+            box-shadow: 0 0 0 2px var(--b3-theme-primary-lightest);
+        }
+    }
+
+    .mcp-guide-dialog__warning {
+        max-width: 55%;
+        font-size: 12px;
+        color: var(--b3-theme-on-surface-light);
     }
 
     // 工具批准对话框样式

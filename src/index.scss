@@ -299,6 +299,11 @@
     display: none !important;
   }
 
+  /* MCP 模式隐藏聊天区后，保持控件条贴近侧边栏底部 */
+  .ai-sidebar__input-container {
+    margin-top: auto;
+  }
+
   .ai-sidebar__mode-selector {
     align-items: flex-start;
     flex-wrap: wrap;
